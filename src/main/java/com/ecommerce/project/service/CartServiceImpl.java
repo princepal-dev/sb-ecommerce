@@ -109,7 +109,13 @@ public class CartServiceImpl implements CartService {
               CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
               List<ProductDTO> products =
                   cart.getCartItems().stream()
-                      .map(item -> modelMapper.map(item, ProductDTO.class))
+                      .map(
+                          item -> {
+                            ProductDTO productDTO =
+                                modelMapper.map(item.getProduct(), ProductDTO.class);
+                            productDTO.setQuantity(item.getQuantity());
+                            return productDTO;
+                          })
                       .toList();
               cartDTO.setProducts(products);
               return cartDTO;
@@ -214,8 +220,12 @@ public class CartServiceImpl implements CartService {
 
     if (cartItem == null) throw new ResourceNotFoundException("Product", "productId", productId);
 
-    cart.setTotalPrice(
-        cart.getTotalPrice() - (cartItem.getProductPrice() * cartItem.getQuantity()));
+    Double price = cartItem.getProductPrice();
+    Double discount = cartItem.getDiscount(); // percentage
+    Double discountedPrice = price - (price * discount / 100);
+    Double amountToSubtract = discountedPrice * cartItem.getQuantity();
+
+    cart.setTotalPrice(cart.getTotalPrice() - amountToSubtract);
 
     if (cart.getTotalPrice() < 0) {
       throw new APIException("Total price cannot be negative.");
@@ -234,24 +244,22 @@ public class CartServiceImpl implements CartService {
             .findById(cartId)
             .orElseThrow(() -> new ResourceNotFoundException("Cart", "cartId", cartId));
 
-      Product product =
-              productRepository
-                      .findById(productId)
-                      .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+    Product product =
+        productRepository
+            .findById(productId)
+            .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
 
-      CartItem cartItem = cartItemRepository.findCartItemByProductIdAndCartId(cartId, productId);
+    CartItem cartItem = cartItemRepository.findCartItemByProductIdAndCartId(cartId, productId);
 
-      if (cartItem == null)
-          throw new APIException("Product " + product.getProductName() + " not available in the cart!");
+    if (cartItem == null)
+      throw new APIException("Product " + product.getProductName() + " not available in the cart!");
 
-      double cartPrice = cart.getTotalPrice() -
-              (cartItem.getProductPrice() * cartItem.getQuantity());
+    double cartPrice = cart.getTotalPrice() - (cartItem.getProductPrice() * cartItem.getQuantity());
 
-      cartItem.setProductPrice(product.getSpecialPrice());
+    cartItem.setProductPrice(product.getSpecialPrice());
 
-      cart.setTotalPrice(cartPrice +
-              (cartItem.getProductPrice() * cartItem.getQuantity()));
+    cart.setTotalPrice(cartPrice + (cartItem.getProductPrice() * cartItem.getQuantity()));
 
-      cartItem = cartItemRepository.save(cartItem);
+    cartItem = cartItemRepository.save(cartItem);
   }
 }

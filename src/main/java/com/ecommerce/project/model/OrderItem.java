@@ -9,21 +9,21 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "cart_items")
-public class CartItem {
+@Table(name = "order_items")
+public class OrderItem {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long cartItemId;
-
-  @ManyToOne
-  @JoinColumn(name = "cart_id")
-  private Cart cart;
+  private Long orderItemId;
 
   @ManyToOne
   @JoinColumn(name = "product_id")
   private Product product;
 
-  private Double discount;
+  @ManyToOne
+  @JoinColumn(name = "order_id")
+  private Order order;
+
   private Integer quantity;
-  private Double productPrice;
+  private Double discount;
+  private Double orderedProductPrice;
 }
